@@ -118,6 +118,9 @@ def run_server():
 
 threading.Thread(target=run_server, daemon=True).start()
 
+# Wait for the FastAPI server to start
+time.sleep(5)  # Add a delay of 5 seconds
+
 # Gradio UI
 def process_text(text):
     response = requests.post("http://localhost:7860/analyze", json={"text": text})

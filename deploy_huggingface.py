@@ -1,40 +1,3 @@
-#code for running in local server
-# import gradio as gr
-# import requests
-#
-# # Backend API URL
-# API_URL = "http://localhost:5000/analyze"
-#
-#
-# def process_text(text):
-#     """Send text to backend API and retrieve classification, entities, and summary."""
-#     response = requests.post(API_URL, json={"text": text})
-#
-#     if response.status_code == 200:
-#         result = response.json()
-#         classification = result.get("classification", "N/A")
-#         entities = result.get("entities", [])
-#         summary = result.get("summary", "N/A")
-#         return classification, ", ".join(entities), summary
-#     else:
-#         return "Error", "Error", "Error"
-#
-#
-# # Gradio UI
-# interface = gr.Interface(
-#     fn=process_text,
-#     inputs=gr.Textbox(label="Enter text"),
-#     outputs=[
-#         gr.Textbox(label="Classification"),
-#         gr.Textbox(label="Entities"),
-#         gr.Textbox(label="Summary"),
-#     ],
-#     title="Text Analysis App",
-#     description="Analyze text using Llama 3.2: Classify, Extract Entities, and Summarize.",
-# )
-#
-# if __name__ == "__main__":
-#     interface.launch()
 import os
 from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
@@ -136,4 +99,3 @@ interface = gr.Interface(
 )
 
 interface.launch(share=True)
-

@@ -87,9 +87,11 @@ threading.Thread(target=run_server, daemon=True).start()
 time.sleep(10)  # Increase the delay to 10 seconds
 
 # Test FastAPI server accessibility
+# Test FastAPI server accessibility
 try:
-    response = requests.get("http://127.0.0.1:7860")
+    response = requests.post("http://127.0.0.1:7860/analyze", json={"text": "Test input"})
     print("FastAPI server is running:", response.status_code)
+    print("Response from /analyze:", response.json())
 except requests.exceptions.RequestException as e:
     print("Failed to connect to FastAPI server:", e)
 

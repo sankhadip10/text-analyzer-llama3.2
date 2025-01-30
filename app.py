@@ -135,6 +135,6 @@ interface = gr.Interface(
     title="Text Analysis App",
 )
 
-interface.launch(server_port=7861,share=True)
+interface.launch(server_port=0, share=True)
 
 

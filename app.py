@@ -1,40 +1,3 @@
-#code for running in local server
-# import gradio as gr
-# import requests
-#
-# # Backend API URL
-# API_URL = "http://localhost:5000/analyze"
-#
-#
-# def process_text(text):
-#     """Send text to backend API and retrieve classification, entities, and summary."""
-#     response = requests.post(API_URL, json={"text": text})
-#
-#     if response.status_code == 200:
-#         result = response.json()
-#         classification = result.get("classification", "N/A")
-#         entities = result.get("entities", [])
-#         summary = result.get("summary", "N/A")
-#         return classification, ", ".join(entities), summary
-#     else:
-#         return "Error", "Error", "Error"
-#
-#
-# # Gradio UI
-# interface = gr.Interface(
-#     fn=process_text,
-#     inputs=gr.Textbox(label="Enter text"),
-#     outputs=[
-#         gr.Textbox(label="Classification"),
-#         gr.Textbox(label="Entities"),
-#         gr.Textbox(label="Summary"),
-#     ],
-#     title="Text Analysis App",
-#     description="Analyze text using Llama 3.2: Classify, Extract Entities, and Summarize.",
-# )
-#
-# if __name__ == "__main__":
-#     interface.launch()
 import os
 import time
 from typing import TypedDict, List
@@ -70,7 +33,7 @@ class TextInput(BaseModel):
 def classification_node(state: State):
     prompt = PromptTemplate(
         input_variables=["text"],
-        template="Classify the following text into one of the categories:News, Blog, Research, or Other.\n\nText:{text}\n\nCategory:",
+        template="Classify the following text into one of the categories: News, Blog, Research, or Other.\n\nText: {text}\n\nCategory:",
     )
     message = HumanMessage(content=prompt.format(text=state["text"]))
     classification = llm.invoke([message]).content.strip()
@@ -79,7 +42,7 @@ def classification_node(state: State):
 def entity_extraction_node(state: State):
     prompt = PromptTemplate(
         input_variables=["text"],
-        template="Extract all the entities (Person, Organization, Location) from the following text. Provide the result as a comma-separated list.\n\nText:{text}\n\nEntities:"
+        template="Extract all the entities (Person, Organization, Location) from the following text. Provide the result as a comma-separated list.\n\nText: {text}\n\nEntities:"
     )
     message = HumanMessage(content=prompt.format(text=state["text"]))
     entities = llm.invoke([message]).content.strip().split(", ")
@@ -88,7 +51,7 @@ def entity_extraction_node(state: State):
 def summarization_node(state: State):
     prompt = PromptTemplate(
         input_variables=["text"],
-        template="Summarize the following text in one short sentence.\n\nText:{text}\n\nSummary:"
+        template="Summarize the following text in one short sentence.\n\nText: {text}\n\nSummary:"
     )
     message = HumanMessage(content=prompt.format(text=state["text"]))
     summary = llm.invoke([message]).content.strip()
@@ -113,7 +76,7 @@ def analyze_text(input_data: TextInput):
     result = compiled_workflow.invoke(state_input)
     return result
 
-# Start FastAPI server in a thread
+# Start FastAPI server on port 7860
 def run_server():
     print("Starting FastAPI server on port 7860...")
     uvicorn.run(app, host="0.0.0.0", port=7860)
@@ -121,11 +84,18 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 
 # Wait for the FastAPI server to start
-time.sleep(10)  # Add a delay of 5 seconds
+time.sleep(10)  # Increase the delay to 10 seconds
 
-# Gradio UI
+# Test FastAPI server accessibility
+try:
+    response = requests.get("http://127.0.0.1:7860")
+    print("FastAPI server is running:", response.status_code)
+except requests.exceptions.RequestException as e:
+    print("Failed to connect to FastAPI server:", e)
+
+# Gradio UI on a random available port
 def process_text(text):
-    response = requests.post("http://localhost:7860/analyze", json={"text": text})
+    response = requests.post("http://127.0.0.1:7860/analyze", json={"text": text})
     result = response.json()
     return result["classification"], ", ".join(result["entities"]), result["summary"]
 
@@ -141,5 +111,3 @@ interface = gr.Interface(
 )
 
 interface.launch(server_port=0, share=True)
-
-

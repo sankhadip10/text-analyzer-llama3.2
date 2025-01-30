@@ -115,12 +115,13 @@ def analyze_text(input_data: TextInput):
 
 # Start FastAPI server in a thread
 def run_server():
+    print("Starting FastAPI server on port 7860...")
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
 threading.Thread(target=run_server, daemon=True).start()
 
 # Wait for the FastAPI server to start
-time.sleep(5)  # Add a delay of 5 seconds
+time.sleep(10)  # Add a delay of 5 seconds
 
 # Gradio UI
 def process_text(text):

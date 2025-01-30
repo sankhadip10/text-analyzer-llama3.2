@@ -6,3 +6,5 @@ uvicorn~=0.34.0
 langgraph~=0.2.68
 fastapi~=0.115.7
 pydantic~=2.10.6
+huggingface_hub==0.25.2
+

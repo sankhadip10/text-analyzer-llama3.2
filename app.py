@@ -31,31 +31,43 @@ class TextInput(BaseModel):
 
 # Nodes for LangGraph workflow
 def classification_node(state: State):
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template="Classify the following text into one of the categories: News, Blog, Research, or Other.\n\nText: {text}\n\nCategory:",
-    )
-    message = HumanMessage(content=prompt.format(text=state["text"]))
-    classification = llm.invoke([message]).content.strip()
-    return {"classification": classification}
+    try:
+        prompt = PromptTemplate(
+            input_variables=["text"],
+            template="Classify the following text into one of the categories: News, Blog, Research, or Other.\n\nText: {text}\n\nCategory:",
+        )
+        message = HumanMessage(content=prompt.format(text=state["text"]))
+        classification = llm.invoke([message]).content.strip()
+        return {"classification": classification}
+    except Exception as e:
+        print("Error in classification_node:", e)
+        raise
 
 def entity_extraction_node(state: State):
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template="Extract all the entities (Person, Organization, Location) from the following text. Provide the result as a comma-separated list.\n\nText: {text}\n\nEntities:"
-    )
-    message = HumanMessage(content=prompt.format(text=state["text"]))
-    entities = llm.invoke([message]).content.strip().split(", ")
-    return {"entities": entities}
+    try:
+        prompt = PromptTemplate(
+            input_variables=["text"],
+            template="Extract all the entities (Person, Organization, Location) from the following text. Provide the result as a comma-separated list.\n\nText: {text}\n\nEntities:"
+        )
+        message = HumanMessage(content=prompt.format(text=state["text"]))
+        entities = llm.invoke([message]).content.strip().split(", ")
+        return {"entities": entities}
+    except Exception as e:
+        print("Error in entity_extraction_node:", e)
+        raise
 
 def summarization_node(state: State):
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template="Summarize the following text in one short sentence.\n\nText: {text}\n\nSummary:"
-    )
-    message = HumanMessage(content=prompt.format(text=state["text"]))
-    summary = llm.invoke([message]).content.strip()
-    return {"summary": summary}
+    try:
+        prompt = PromptTemplate(
+            input_variables=["text"],
+            template="Summarize the following text in one short sentence.\n\nText: {text}\n\nSummary:"
+        )
+        message = HumanMessage(content=prompt.format(text=state["text"]))
+        summary = llm.invoke([message]).content.strip()
+        return {"summary": summary}
+    except Exception as e:
+        print("Error in summarization_node:", e)
+        raise
 
 # Define LangGraph workflow
 workflow = StateGraph(State)
@@ -72,9 +84,13 @@ compiled_workflow = workflow.compile()
 
 @app.post("/analyze")
 def analyze_text(input_data: TextInput):
-    state_input = {"text": input_data.text}
-    result = compiled_workflow.invoke(state_input)
-    return result
+    try:
+        state_input = {"text": input_data.text}
+        result = compiled_workflow.invoke(state_input)
+        return result
+    except Exception as e:
+        print("Error in /analyze endpoint:", e)
+        return {"error": str(e)}, 500
 
 # Start FastAPI server on port 7860
 def run_server():
@@ -87,7 +103,6 @@ threading.Thread(target=run_server, daemon=True).start()
 time.sleep(10)  # Increase the delay to 10 seconds
 
 # Test FastAPI server accessibility
-# Test FastAPI server accessibility
 try:
     response = requests.post("http://127.0.0.1:7860/analyze", json={"text": "Test input"})
     print("FastAPI server is running:", response.status_code)
@@ -97,9 +112,12 @@ except requests.exceptions.RequestException as e:
 
 # Gradio UI on a random available port
 def process_text(text):
-    response = requests.post("http://127.0.0.1:7860/analyze", json={"text": text})
-    result = response.json()
-    return result["classification"], ", ".join(result["entities"]), result["summary"]
+    try:
+        response = requests.post("http://127.0.0.1:7860/analyze", json={"text": text})
+        result = response.json()
+        return result["classification"], ", ".join(result["entities"]), result["summary"]
+    except Exception as e:
+        return f"Error: {str(e)}", "", ""
 
 interface = gr.Interface(
     fn=process_text,

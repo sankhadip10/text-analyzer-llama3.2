@@ -191,7 +191,6 @@
 #     main()
 
 import os
-import time
 from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
 from langchain.prompts import PromptTemplate
@@ -200,16 +199,12 @@ from langchain.schema import HumanMessage
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import gradio as gr
-import requests
-import uvicorn
-import threading
-from contextlib import contextmanager
 
 # Initialize FastAPI app
-fastapi_app = FastAPI()  # Changed variable name from app to fastapi_app
+fastapi_app = FastAPI()  # Changed from app to fastapi_app
 
 # LLM Model
-llm = ChatOllama(model="llama3.2:latest", base_url="http://127.0.0.1:11434")
+llm = ChatOllama(model="llama2:latest", base_url="http://127.0.0.1:11434")
 
 
 # Define state format
@@ -220,12 +215,10 @@ class State(TypedDict):
     summary: str
 
 
-# Request model for FastAPI
-class TextInput(BaseModel):
-    text: str
+# Define LangGraph workflow
+workflow = StateGraph(State)
 
 
-# Nodes for LangGraph workflow
 def classification_node(state: State):
     prompt = PromptTemplate(
         input_variables=["text"],
@@ -265,8 +258,6 @@ def summarization_node(state: State):
         raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
 
-# Define LangGraph workflow
-workflow = StateGraph(State)
 workflow.add_node("classification_node", classification_node)
 workflow.add_node("entity_extraction", entity_extraction_node)
 workflow.add_node("summarization", summarization_node)
@@ -279,65 +270,58 @@ workflow.add_edge("summarization", END)
 compiled_workflow = workflow.compile()
 
 
-@fastapi_app.post("/analyze")  # Updated decorator to use fastapi_app
-async def analyze_text(input_data: TextInput):
-    if not input_data.text.strip():
-        raise HTTPException(status_code=400, detail="Text input cannot be empty")
-
+def process_text(text):
+    """Process text through the workflow"""
     try:
-        result = compiled_workflow.invoke({"text": input_data.text})
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        if not text.strip():
+            return "Error: Empty text", "", ""
 
-
-def main():
-    try:
-        # Get port from environment variable for Hugging Face compatibility
-        port = int(os.environ.get("PORT", 7860))
-
-        # Gradio interface
-        def process_text(text):
-            try:
-                # Use local URL since both services are on the same instance
-                response = requests.post("http://127.0.0.1:7860/analyze", json={"text": text})
-                response.raise_for_status()
-                result = response.json()
-                return (
-                    result["classification"],
-                    ", ".join(result["entities"]),
-                    result["summary"]
-                )
-            except Exception as e:
-                return f"Error: {str(e)}", "", ""
-
-        interface = gr.Interface(
-            fn=process_text,
-            inputs=gr.Textbox(label="Enter text to analyze"),
-            outputs=[
-                gr.Textbox(label="Classification"),
-                gr.Textbox(label="Entities"),
-                gr.Textbox(label="Summary")
-            ],
-            title="Text Analysis Application",
-            description="Enter text to get classification, entity extraction, and summarization."
+        result = compiled_workflow.invoke({"text": text})
+        return (
+            result["classification"],
+            ", ".join(result["entities"]),
+            result["summary"]
         )
-
-        # Mount Gradio app to FastAPI
-        combined_app = gr.mount_gradio_app(fastapi_app, interface, path="/")  # Using fastapi_app instead of app
-
-        # Start the FastAPI server
-        uvicorn.run(
-            combined_app,  # Using the combined app
-            host="0.0.0.0",  # Required for Hugging Face Spaces
-            port=port,
-            timeout_keep_alive=30
-        )
-
     except Exception as e:
-        print(f"Error starting application: {str(e)}")
-        raise
+        return f"Error: {str(e)}", "", ""
 
 
+# Create Gradio interface
+demo = gr.Interface(
+    fn=process_text,
+    inputs=[
+        gr.Textbox(
+            label="Enter text to analyze",
+            placeholder="Type or paste your text here...",
+            lines=5
+        )
+    ],
+    outputs=[
+        gr.Textbox(label="Classification"),
+        gr.Textbox(label="Entities"),
+        gr.Textbox(label="Summary")
+    ],
+    title="Text Analysis Application",
+    description="Enter text to get classification, entity extraction, and summarization.",
+    examples=[
+        ["The new iPhone 15 Pro was released yesterday by Apple in Cupertino. CEO Tim Cook presented the device."],
+        ["A recent study by researchers at MIT shows promising results in renewable energy efficiency."],
+        ["This is a blog post about my recent trip to Paris. The Eiffel Tower was amazing!"]
+    ],
+    theme=gr.themes.Soft()
+)
+
+# Mount the Gradio app to FastAPI
+combined_app = gr.mount_gradio_app(fastapi_app, demo, path="/")  # Using fastapi_app instead of app
+
+# For running locally and on Hugging Face
 if __name__ == "__main__":
-    main()
+    port = int(os.environ.get("PORT", 7860))
+    import uvicorn
+
+    uvicorn.run(
+        combined_app,  # Using the combined app
+        host="0.0.0.0",
+        port=port,
+        timeout_keep_alive=30
+    )

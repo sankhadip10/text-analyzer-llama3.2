@@ -189,6 +189,7 @@
 #
 # if __name__ == "__main__":
 #     main()
+
 import os
 import time
 from typing import TypedDict, List
@@ -205,7 +206,7 @@ import threading
 from contextlib import contextmanager
 
 # Initialize FastAPI app
-app = FastAPI()
+fastapi_app = FastAPI()  # Changed variable name from app to fastapi_app
 
 # LLM Model
 llm = ChatOllama(model="llama3.2:latest", base_url="http://127.0.0.1:11434")
@@ -278,7 +279,7 @@ workflow.add_edge("summarization", END)
 compiled_workflow = workflow.compile()
 
 
-@app.post("/analyze")
+@fastapi_app.post("/analyze")  # Updated decorator to use fastapi_app
 async def analyze_text(input_data: TextInput):
     if not input_data.text.strip():
         raise HTTPException(status_code=400, detail="Text input cannot be empty")
@@ -323,11 +324,11 @@ def main():
         )
 
         # Mount Gradio app to FastAPI
-        app = gr.mount_gradio_app(app, interface, path="/")
+        combined_app = gr.mount_gradio_app(fastapi_app, interface, path="/")  # Using fastapi_app instead of app
 
         # Start the FastAPI server
         uvicorn.run(
-            app,
+            combined_app,  # Using the combined app
             host="0.0.0.0",  # Required for Hugging Face Spaces
             port=port,
             timeout_keep_alive=30

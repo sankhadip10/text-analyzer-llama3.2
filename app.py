@@ -199,13 +199,27 @@ from langchain.schema import HumanMessage
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import gradio as gr
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
-fastapi_app = FastAPI()  # Changed from app to fastapi_app
+app = FastAPI(title="Text Analysis API")
 
-# LLM Model
-llm = ChatOllama(model="llama2:latest", base_url="http://127.0.0.1:11434")
+# LLM Model with error handling
+def initialize_llm():
+    try:
+        return ChatOllama(model="llama3.2:latest", base_url="http://127.0.0.1:11434")
+    except Exception as e:
+        logger.error(f"Failed to initialize LLM: {str(e)}")
+        raise RuntimeError("Failed to initialize LLM. Please check if Ollama is running.")
 
+llm = initialize_llm()
 
 # Define state format
 class State(TypedDict):
@@ -214,10 +228,8 @@ class State(TypedDict):
     entities: List[str]
     summary: str
 
-
 # Define LangGraph workflow
 workflow = StateGraph(State)
-
 
 def classification_node(state: State):
     prompt = PromptTemplate(
@@ -227,10 +239,11 @@ def classification_node(state: State):
     message = HumanMessage(content=prompt.format(text=state["text"]))
     try:
         classification = llm.invoke([message]).content.strip()
+        logger.debug(f"Classification result: {classification}")
         return {"classification": classification}
     except Exception as e:
+        logger.error(f"Classification failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Classification failed: {str(e)}")
-
 
 def entity_extraction_node(state: State):
     prompt = PromptTemplate(
@@ -240,10 +253,11 @@ def entity_extraction_node(state: State):
     message = HumanMessage(content=prompt.format(text=state["text"]))
     try:
         entities = llm.invoke([message]).content.strip().split(", ")
+        logger.debug(f"Extracted entities: {entities}")
         return {"entities": entities}
     except Exception as e:
+        logger.error(f"Entity extraction failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Entity extraction failed: {str(e)}")
-
 
 def summarization_node(state: State):
     prompt = PromptTemplate(
@@ -253,11 +267,13 @@ def summarization_node(state: State):
     message = HumanMessage(content=prompt.format(text=state["text"]))
     try:
         summary = llm.invoke([message]).content.strip()
+        logger.debug(f"Generated summary: {summary}")
         return {"summary": summary}
     except Exception as e:
+        logger.error(f"Summarization failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
-
+# Set up workflow
 workflow.add_node("classification_node", classification_node)
 workflow.add_node("entity_extraction", entity_extraction_node)
 workflow.add_node("summarization", summarization_node)
@@ -269,12 +285,16 @@ workflow.add_edge("summarization", END)
 
 compiled_workflow = workflow.compile()
 
-
-def process_text(text):
-    """Process text through the workflow"""
+def process_text(text: str) -> tuple[str, str, str]:
+    """Process text through the workflow with enhanced error handling"""
     try:
-        if not text.strip():
-            return "Error: Empty text", "", ""
+        if not text or not text.strip():
+            logger.warning("Empty text provided")
+            return "Error: Empty text not allowed", "", ""
+
+        if len(text.strip()) > 5000:  # Add reasonable limit
+            logger.warning("Text too long")
+            return "Error: Text exceeds 5000 characters", "", ""
 
         result = compiled_workflow.invoke({"text": text})
         return (
@@ -283,8 +303,8 @@ def process_text(text):
             result["summary"]
         )
     except Exception as e:
+        logger.error(f"Error processing text: {str(e)}")
         return f"Error: {str(e)}", "", ""
-
 
 # Create Gradio interface
 demo = gr.Interface(
@@ -311,17 +331,10 @@ demo = gr.Interface(
     theme=gr.themes.Soft()
 )
 
-# Mount the Gradio app to FastAPI
-combined_app = gr.mount_gradio_app(fastapi_app, demo, path="/")  # Using fastapi_app instead of app
-
-# For running locally and on Hugging Face
+# For Hugging Face Spaces, we need to use their specific configuration
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))
-    import uvicorn
-
-    uvicorn.run(
-        combined_app,  # Using the combined app
-        host="0.0.0.0",
-        port=port,
-        timeout_keep_alive=30
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False
     )

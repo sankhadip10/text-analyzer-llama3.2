@@ -208,7 +208,7 @@ from contextlib import contextmanager
 app = FastAPI()
 
 # LLM Model
-llm = ChatOllama(model="llama2:latest", base_url="http://127.0.0.1:11434")
+llm = ChatOllama(model="llama3.2:latest", base_url="http://127.0.0.1:11434")
 
 
 # Define state format

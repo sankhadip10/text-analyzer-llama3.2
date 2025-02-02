@@ -84,77 +84,77 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 # Initialize FastAPI app
-app = FastAPI()
-
-# LLM Model
-llm = ChatOllama(model="llama3.2:latest", base_url="http://127.0.0.1:11434")
-
-# Define state format
-class State(TypedDict):
-    text: str
-    classification: List[str]
-    entities: List[str]
-    summary: str
-
-# Request model for FastAPI
-class TextInput(BaseModel):
-    text: str
-
-# Nodes for LangGraph workflow
-def classification_node(state: State):
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template="Classify the following text into one of the categories:News, Blog, Research, or Other.\n\nText:{text}\n\nCategory:",
-    )
-    message = HumanMessage(content=prompt.format(text=state["text"]))
-    classification = llm.invoke([message]).content.strip()
-    return {"classification": classification}
-
-def entity_extraction_node(state: State):
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template="Extract all the entities (Person, Organization, Location) from the following text. Provide the result as a comma-separated list.\n\nText:{text}\n\nEntities:"
-    )
-    message = HumanMessage(content=prompt.format(text=state["text"]))
-    entities = llm.invoke([message]).content.strip().split(", ")
-    return {"entities": entities}
-
-def summarization_node(state: State):
-    prompt = PromptTemplate(
-        input_variables=["text"],
-        template="Summarize the following text in one short sentence.\n\nText:{text}\n\nSummary:"
-    )
-    message = HumanMessage(content=prompt.format(text=state["text"]))
-    summary = llm.invoke([message]).content.strip()
-    return {"summary": summary}
-
-# Define LangGraph workflow
-workflow = StateGraph(State)
-workflow.add_node("classification_node", classification_node)
-workflow.add_node("entity_extraction", entity_extraction_node)
-workflow.add_node("summarization", summarization_node)
-
-# Define workflow edges
-workflow.set_entry_point("classification_node")
-workflow.add_edge("classification_node", "entity_extraction")
-workflow.add_edge("entity_extraction", "summarization")
-workflow.add_edge("summarization", END)
-
-# Compile the graph
-compiled_workflow = workflow.compile()
-
-# Expose API endpoint
-@app.post("/analyze")
-def analyze_text(input_data: TextInput):
-    """API to process text and return classification, entities, and summary."""
-    state_input = {"text": input_data.text}
-    result = compiled_workflow.invoke(state_input)
-    return {
-        "classification": result["classification"],
-        "entities": result["entities"],
-        "summary": result["summary"],
-    }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+# app = FastAPI()
+#
+# # LLM Model
+# llm = ChatOllama(model="llama3.2:latest", base_url="http://127.0.0.1:11434")
+#
+# # Define state format
+# class State(TypedDict):
+#     text: str
+#     classification: List[str]
+#     entities: List[str]
+#     summary: str
+#
+# # Request model for FastAPI
+# class TextInput(BaseModel):
+#     text: str
+#
+# # Nodes for LangGraph workflow
+# def classification_node(state: State):
+#     prompt = PromptTemplate(
+#         input_variables=["text"],
+#         template="Classify the following text into one of the categories:News, Blog, Research, or Other.\n\nText:{text}\n\nCategory:",
+#     )
+#     message = HumanMessage(content=prompt.format(text=state["text"]))
+#     classification = llm.invoke([message]).content.strip()
+#     return {"classification": classification}
+#
+# def entity_extraction_node(state: State):
+#     prompt = PromptTemplate(
+#         input_variables=["text"],
+#         template="Extract all the entities (Person, Organization, Location) from the following text. Provide the result as a comma-separated list.\n\nText:{text}\n\nEntities:"
+#     )
+#     message = HumanMessage(content=prompt.format(text=state["text"]))
+#     entities = llm.invoke([message]).content.strip().split(", ")
+#     return {"entities": entities}
+#
+# def summarization_node(state: State):
+#     prompt = PromptTemplate(
+#         input_variables=["text"],
+#         template="Summarize the following text in one short sentence.\n\nText:{text}\n\nSummary:"
+#     )
+#     message = HumanMessage(content=prompt.format(text=state["text"]))
+#     summary = llm.invoke([message]).content.strip()
+#     return {"summary": summary}
+#
+# # Define LangGraph workflow
+# workflow = StateGraph(State)
+# workflow.add_node("classification_node", classification_node)
+# workflow.add_node("entity_extraction", entity_extraction_node)
+# workflow.add_node("summarization", summarization_node)
+#
+# # Define workflow edges
+# workflow.set_entry_point("classification_node")
+# workflow.add_edge("classification_node", "entity_extraction")
+# workflow.add_edge("entity_extraction", "summarization")
+# workflow.add_edge("summarization", END)
+#
+# # Compile the graph
+# compiled_workflow = workflow.compile()
+#
+# # Expose API endpoint
+# @app.post("/analyze")
+# def analyze_text(input_data: TextInput):
+#     """API to process text and return classification, entities, and summary."""
+#     state_input = {"text": input_data.text}
+#     result = compiled_workflow.invoke(state_input)
+#     return {
+#         "classification": result["classification"],
+#         "entities": result["entities"],
+#         "summary": result["summary"],
+#     }
+#
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=5000)

@@ -313,5 +313,83 @@ The application might output:
 
 ---
 
+
+### **Extra Points to Keep in Mind While Committing to Hugging Face**  
+1. **Ensure SSH keys are loaded** before pushing:  
+   ```sh
+   ssh-add -l
+   ```  
+   If no keys are listed, add the key:  
+   ```sh
+   ssh-add ~/.ssh/id_ed25519
+   ```  
+2. **Start SSH Agent** if it's not running:  
+   ```sh
+   eval "$(ssh-agent -s)"
+   ssh-add ~/.ssh/id_ed25519
+   ```  
+3. **Verify SSH connection** with Hugging Face:  
+   ```sh
+   ssh -T git@hf.co
+   ```  
+   If it says **"Hi anonymous"**, SSH is not properly set up.  
+4. **Use SSH instead of HTTPS for Git remote**:  
+   ```sh
+   git remote set-url origin git@hf.co:your-username/your-repo.git
+   ```  
+5. **Commit and push correctly**:  
+   ```sh
+   git add .
+   git commit -m "Your commit message"
+   git push origin main
+   ```  
+
+---
+
+### **Steps If `.bashrc` Is Not Updated**  
+Run these commands manually each time before pushing:  
+```sh
+eval "$(ssh-agent -s)"
+ssh-add -l
+ssh-add ~/.ssh/id_ed25519
+ssh -T git@hf.co
+```
+
+---
+
+### **Code to Add in `.bashrc` for Persistent SSH Agent**  
+Add the following to `~/.bashrc` to avoid running SSH agent commands every time:  
+```sh
+export PATH=$HOME/bin:$PATH
+
+# Persistent SSH Agent Script
+env=~/.ssh/agent.env
+
+agent_load_env() {
+    test -f "$env" && . "$env" >| /dev/null
+}
+
+agent_start() {
+    (umask 077; ssh-agent >| "$env")
+    . "$env" >| /dev/null
+}
+
+if [ -z "$SSH_AUTH_SOCK" ]; then
+    agent_load_env
+fi
+
+if ! ps -ef | grep -q "[s]sh-agent"; then
+    agent_start
+fi
+
+ssh-add -l > /dev/null 2>&1 || ssh-add ~/.ssh/id_ed25519 > /dev/null 2>&1
+```
+
+This ensures that the SSH agent starts automatically, and you don't need to manually run `ssh-add` every time.  
+
+---
+
+This summary can be directly added to **GitHub README.md** for others facing similar SSH authentication issues with Hugging Face. 🚀
+
 This modified version is optimized for Hugging Face Spaces and provides a lightweight, user-friendly text analysis tool. You can access the live version here:  
 [Text Analysis Application on Hugging Face Spaces](https://huggingface.co/spaces/sankhadip10/textanalyzer)

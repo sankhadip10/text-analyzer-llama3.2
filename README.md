@@ -2,6 +2,10 @@
 
 This repository contains a Python-based text analysis application that leverages a LangGraph workflow to classify text, extract entities, and generate summaries. The application is built using FastAPI for the backend and Gradio for the user interface. It uses the Ollama language model (`llama3.2`) for text processing.
 
+<img width="797" alt="image" src="https://github.com/user-attachments/assets/e47d628a-7e5d-4f72-b24b-fff69fd0ebde" />
+
+
+
 ## Features
 - **Text Classification**: Classifies input text into categories such as News, Blog, Research, or Other.
 - **Entity Extraction**: Extracts entities (Person, Organization, Location) from the text.
